@@ -1,11 +1,70 @@
+// Batch build and rebuild graphviz algorithmic diagrams as png for publication
 // usage: sh seran-wiki.sh --allow-disclosure ../seran-dig/dig.ts
 
 const { stat } = Deno;
 import { readFileStr, writeFileStrSync, exists } from "std/fs/mod.ts";
 import * as wiki from "seran/wiki.ts";
-// import { ProcessStep } from "./step.ts";
+import { ProcessStep } from "./step.ts";
 
+export let plugins = [ "/client/process-step.mjs" ]
 export let metaPages = {};
+
+export async function init(opts) {
+  wiki.pages(`
+
+Welcome Visitors
+
+  Welcome to this [[Seran Wiki]] Federation outpost.
+  From this page you can find who we are and what we do.
+
+  Pages about us.
+
+  [[Ward Cunningham]]
+
+  Pages where we do and share.
+
+  [[DIG Handbook]]
+
+DIG Handbook
+
+  We bulk generate graphviz images for print publication as pdf.
+
+  Press Start to rerun diagrams before pringing a new version.
+  Return in a few minutes to confirm completion.
+
+  process-step:
+    text: "Fetch and process all pages.",
+    href: "/fetch"
+
+  [[DIG Stats]] during and after build
+
+`)
+}
+
+function route(url, fn) {
+  metaPages[url] = fn;
+}
+
+// L I V E   R E P O R T S
+
+function page (title, story) {
+  const route = (url, fn) => {metaPages[url] = fn}
+  const asSlug = title => title.replace(/\s/g, "-").replace(/[^A-Za-z0-9-]/g, "").toLowerCase()
+  const asItems = metatext => metatext.split(/\n+/).map((text) => wiki.paragraph(text))
+  route(`/${asSlug(title)}.json`, async (req, _system) => {
+    wiki.serveJson(req, wiki.page(title, asItems(story())))
+  })
+}
+
+page('DIG Stats', () =>
+`Live counts updated during build.
+
+Sitemap information. [${site} site]
+${sitemap.length} pages from
+${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
+
+`)
+
 
 
 function slug (title) {
@@ -34,17 +93,13 @@ console.log(`loading ${sitemap.length} pages for DIG`)
 let pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
       .then(all => {return asmap(all)})
 
-function route(url, fn) {
-  metaPages[url] = fn;
-}
 
 // http://path.ward.asia.wiki.org/assets/page/production-tools/images/designed-ingenuity-dig.png
 
-let type = 'graphviz'
 let text =
 `DOT strict digraph
-  
-// rankdir=LR
+
+  rankdir=TB
 
   node [style=filled fillcolor=white penwidth=5 color=black fontname="Helvetica-bold"]
   HERE NODE
@@ -73,8 +128,10 @@ let text =
 
 for (let slug in pages) {
   let page = pages[slug]
-  if (page.story.find(i => i.type == 'graphviz')) {
-    let dot = await makedot(page, {type:'graphviz', text})
+  let graphviz = page.story.find(i => i.type == 'graphviz')
+  if (graphviz) {
+    let markup = graphviz.text.match(/tall/) ? text.replace('TB','LR') : text
+    let dot = await makedot(page, {type:'graphviz', text:markup})
     writeFileStrSync(`../seran-dig/data/${slug}`, dot)
     console.log('write',slug)
   } else {
@@ -388,44 +445,6 @@ async function makedot(page, item) {
 
 
 
-
-
-
-
-
-export async function init(opts) { 
-  wiki.pages(`
-
-Welcome Visitors
-
-  Welcome to this [[Seran Wiki]] Federation outpost.
-  From this page you can find who we are and what we do.
-
-  Pages about us.
-
-  [[Ward Cunningham]]
-
-  Pages where we do and share.
-
-  [[DIG Handbook]]
-
-DIG Handbook
-
-  We'll explore options for bulk translations of a handbook that uses graphviz images for navigaton.
-  Experiments appear here in order.
-
-  [[Server-Side Rendering]] of Dot as PNG
-
-Server-Side Rendering
-
-  We will render a png on demand and then load it into the following html item.
-
-  html:
-    text: "<img width=100% src=test-case.png>"
-
-`)
-
-}
 
 
 
