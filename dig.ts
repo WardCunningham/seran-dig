@@ -36,7 +36,7 @@ DIG Handbook
     text: "Fetch and process all pages.",
     href: "/rebuild"
 
-  [[DIG Stats]] during and after buil
+  [[DIG Stats]] during and after build
 
 `)
 }
@@ -67,6 +67,12 @@ ${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
 
 Last Build Started
 ${lastrun}
+
+Pages with diagrams
+${wrote.map(t=>`[[${t}]]`).join(', ')}
+
+Pages without diagrams
+${skipped.map(t=>`[[${t}]]`).join(', ')}
 
 `)
 
