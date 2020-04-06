@@ -34,9 +34,9 @@ DIG Handbook
 
   process-step:
     text: "Fetch and process all pages.",
-    href: "/fetch"
+    href: "/rebuild"
 
-  [[DIG Stats]] during and after build
+  [[DIG Stats]] during and after buil
 
 `)
 }
@@ -60,11 +60,15 @@ page('DIG Stats', () =>
 `Live counts updated during build.
 
 Sitemap information. [${site} site]
-${sitemap.length} pages from
+${sitemap.length} pages
+
+Last Site Update
 ${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
 
-`)
+Last Build Started
+${lastrun}
 
+`)
 
 
 function slug (title) {
@@ -89,10 +93,17 @@ function json (url) {
 let site = 'https://dig.wiki.innovateoregon.org'
 let sitemap = await json(`${site}/system/sitemap.json`)
 let pageinfo = asmap(sitemap)
-console.log(`loading ${sitemap.length} pages for DIG`)
 let pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
       .then(all => {return asmap(all)})
+let dataDir = "../seran-dig/data"
+if (!await exists(dataDir)) {
+  console.log(`Creating: ${dataDir}`)
+  await Deno.mkdir(dataDir)
+}
 
+let wrote = []
+let skipped = []
+let lastrun = new Date()
 
 // http://path.ward.asia.wiki.org/assets/page/production-tools/images/designed-ingenuity-dig.png
 
@@ -126,18 +137,37 @@ let text =
 //         ssh asia 'cat > .wiki/path.ward.asia.wiki.org/assets/page/production-tools/images/'$i'.png'
 // done)
 
-for (let slug in pages) {
-  let page = pages[slug]
-  let graphviz = page.story.find(i => i.type == 'graphviz')
-  if (graphviz) {
-    let markup = graphviz.text.match(/tall/) ? text.replace('TB','LR') : text
-    let dot = await makedot(page, {type:'graphviz', text:markup})
-    writeFileStrSync(`../seran-dig/data/${slug}`, dot)
-    console.log('write',slug)
-  } else {
-    console.log('skip',slug)
+let rebuild = new ProcessStep('rebuild', false, build).control(metaPages)
+
+
+async function build () {
+
+  wrote = []
+  skipped = []
+  lastrun = new Date()
+
+  sitemap = await json(`${site}/system/sitemap.json`)
+  await rebuild.step(`${sitemap.length} pages in sitemap`)
+  pageinfo = asmap(sitemap)
+  pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
+        .then(all => {return asmap(all)})
+  await rebuild.step(`pages loaded`)
+
+  for (let slug in pages) {
+    let page = pages[slug]
+    let graphviz = page.story.find(i => i.type == 'graphviz')
+    if (graphviz) {
+      await rebuild.step(`${page.title} next graphviz`)
+      let markup = graphviz.text.match(/tall/) ? text.replace('TB','LR') : text
+      let dot = await makedot(page, {type:'graphviz', text:markup})
+      writeFileStrSync(`${dataDir}/${slug}`, dot)
+      wrote.push(page.title)
+    } else {
+      skipped.push(page.title)
+    }
   }
 }
+
 
 async function makedot(page, item) {
   var m
