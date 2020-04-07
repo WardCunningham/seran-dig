@@ -95,21 +95,28 @@ function json (url) {
 }
 
 
-
 let site = 'https://dig.wiki.innovateoregon.org'
-let sitemap = await json(`${site}/system/sitemap.json`)
-let pageinfo = asmap(sitemap)
-let pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
-      .then(all => {return asmap(all)})
-let dataDir = "../seran-dig/data"
-if (!await exists(dataDir)) {
-  console.log(`Creating: ${dataDir}`)
-  await Deno.mkdir(dataDir)
-}
+let sitemap = []
+let pageinfo = {}
+let pages = {}
 
 let wrote = []
 let skipped = []
 let lastrun = new Date()
+
+
+async function mkdir (path) {
+  if (!await exists(path)) {
+    console.log(`Creating: ${path}`)
+    await Deno.mkdir(path)
+  }
+}
+
+let dataDir = "../seran-dig/data"
+await mkdir (`${dataDir}`)
+await mkdir (`${dataDir}/dot`)
+await mkdir (`${dataDir}/png`)
+
 
 // http://path.ward.asia.wiki.org/assets/page/production-tools/images/designed-ingenuity-dig.png
 
@@ -145,7 +152,6 @@ let text =
 
 let rebuild = new ProcessStep('rebuild', false, build).control(metaPages)
 
-
 async function build () {
 
   wrote = []
@@ -166,7 +172,10 @@ async function build () {
       await rebuild.step(`${page.title} next graphviz`)
       let markup = graphviz.text.match(/tall/) ? text.replace('TB','LR') : text
       let dot = await makedot(page, {type:'graphviz', text:markup})
-      writeFileStrSync(`${dataDir}/${slug}`, dot)
+      writeFileStrSync(`${dataDir}/dot/${slug}.dot`, dot)
+      let proc = Deno.run({args:["dot","-Tpng", `${dataDir}/dot/${slug}.dot`,`-o${dataDir}/png/${slug}.png`]})
+      let status = await proc.status()
+      if (!status.success) console.log('dot',slug,status)
       wrote.push(page.title)
     } else {
       skipped.push(page.title)
