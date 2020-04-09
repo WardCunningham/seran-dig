@@ -5,9 +5,33 @@ const { stat } = Deno;
 import { readFileStr, writeFileStrSync, exists } from "std/fs/mod.ts";
 import * as wiki from "seran/wiki.ts";
 import { ProcessStep } from "./step.ts";
+import {
+  isAbsolute,
+  join,
+  basename,
+  normalize
+} from "std/path/posix.ts";
 
 export let plugins = [ "/client/process-step.mjs" ]
 export let metaPages = {};
+
+export function serve(req, _system) {
+  if(req.url.startsWith('/png/')) {
+    let path = join('../seran-dig/data',req.url)
+    console.log({path})
+    // if (exists(path)) ...
+    wiki.serveFile(req,'image/png',path)
+    return true
+  }
+  if(req.url.startsWith('/static/')) {
+    let path = join('../seran-dig',req.url)
+    console.log({path})
+    // if (exists(path)) ...
+    wiki.serveFile(req,'text/html',path)
+    return true
+  }
+  return false
+}
 
 export async function init(opts) {
   wiki.pages(`
@@ -28,6 +52,9 @@ Welcome Visitors
 DIG Handbook
 
   We bulk generate graphviz images for print publication as pdf.
+  First we check for changes in the source.
+
+  [[Handbook Source]] recent build
 
   Press Start to rerun diagrams before pringing a new version.
   Return in a few minutes to confirm completion.
@@ -36,7 +63,7 @@ DIG Handbook
     text: "Fetch and process all pages.",
     href: "/rebuild"
 
-  [[DIG Stats]] during and after build
+  [[Conversion Summary]] after build
 
 `)
 }
@@ -44,38 +71,6 @@ DIG Handbook
 function route(url, fn) {
   metaPages[url] = fn;
 }
-
-// L I V E   R E P O R T S
-
-function page (title, story) {
-  const route = (url, fn) => {metaPages[url] = fn}
-  const asSlug = title => title.replace(/\s/g, "-").replace(/[^A-Za-z0-9-]/g, "").toLowerCase()
-  const asItems = metatext => metatext.split(/\n+/).map((text) => wiki.paragraph(text))
-  route(`/${asSlug(title)}.json`, async (req, _system) => {
-    wiki.serveJson(req, wiki.page(title, asItems(story())))
-  })
-}
-
-page('DIG Stats', () =>
-`Live counts updated during build.
-
-Sitemap information. [${site} site]
-${sitemap.length} pages
-
-Last Site Update
-${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
-
-Last Build Started
-${lastrun}
-
-Pages with diagrams
-${wrote.map(t=>`[[${t}]]`).join(', ')}
-
-Pages without diagrams
-${skipped.map(t=>`[[${t}]]`).join(', ')}
-
-`)
-
 
 function slug (title) {
   return title
@@ -117,6 +112,46 @@ await mkdir (`${dataDir}`)
 await mkdir (`${dataDir}/dot`)
 await mkdir (`${dataDir}/png`)
 
+
+
+// L I V E   R E P O R T S
+
+function page (title, story) {
+  const route = (url, fn) => {metaPages[url] = fn}
+  const asSlug = title => title.replace(/\s/g, "-").replace(/[^A-Za-z0-9-]/g, "").toLowerCase()
+  const asItems = metatext => metatext.split(/\n+/).map((text) => wiki.paragraph(text))
+  route(`/${asSlug(title)}.json`, async (req, _system) => {
+    wiki.serveJson(req, wiki.page(title, asItems(story())))
+  })
+}
+
+page('Handbook Source', () =>
+
+`Before we start we check to see if our source has been updated since our last build.
+
+Sitemap information.
+
+[${site} ${site}]
+
+${sitemap.length} pages
+
+Last Site Update
+${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
+
+Last Build Started
+${lastrun}
+`)
+
+page('Conversion Summary', () =>
+`We create PNG files for pages with diagrams.
+
+Pages with diagrams
+${wrote.map(t=>`[[${t}]]`).join(', ')}
+
+Pages without diagrams
+${skipped.map(t=>`[[${t}]]`).join(', ')}
+
+`)
 
 // http://path.ward.asia.wiki.org/assets/page/production-tools/images/designed-ingenuity-dig.png
 
@@ -163,7 +198,7 @@ async function build () {
   pageinfo = asmap(sitemap)
   pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
         .then(all => {return asmap(all)})
-  await rebuild.step(`pages loaded`)
+  await rebuild.step(`pages loaded, ready to draw`)
 
   for (let slug in pages) {
     let page = pages[slug]
@@ -173,7 +208,7 @@ async function build () {
       let markup = graphviz.text.match(/tall/) ? text.replace('TB','LR') : text
       let dot = await makedot(page, {type:'graphviz', text:markup})
       writeFileStrSync(`${dataDir}/dot/${slug}.dot`, dot)
-      let proc = Deno.run({args:["dot","-Tpng", `${dataDir}/dot/${slug}.dot`,`-o${dataDir}/png/${slug}.png`]})
+      let proc = Deno.run({cmd:["dot","-Tpng", `${dataDir}/dot/${slug}.dot`,`-o${dataDir}/png/${slug}.png`]})
       let status = await proc.status()
       if (!status.success) console.log('dot',slug,status)
       wrote.push(page.title)
@@ -181,6 +216,13 @@ async function build () {
       skipped.push(page.title)
     }
   }
+
+  await rebuild.step('images completed, ready to upload')
+  let pubsite='path.ward.asia.wiki.org'
+  let assets='page/production-tools/images'
+  let proc2 = Deno.run({cmd:["rsync", "-avz", `${dataDir}/png/`, `asia:.wiki/${pubsite}/assets/${assets}/`]})
+  let status2 = await proc2.status()
+  if (!status2.success) console.log('rsync',status2)
 }
 
 
