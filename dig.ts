@@ -65,10 +65,6 @@ DIG Handbook
 
   [[Conversion Summary]] after build
 
-  We resort to an html script to complete the assembly of text and images for printing.
-
-  [http:/assets/dig.html dig.html]
-
 `)
 }
 
