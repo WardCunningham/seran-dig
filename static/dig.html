@@ -1,0 +1,160 @@
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body>
+<div id="output" style="max-width:600px;">loading</div>
+
+<style>
+  a {text-decoration: none;}
+  h2, h3 {page-break-before: always;}
+  img {max-width: 460px;}
+</style>
+
+<script>
+
+  let site = 'https://dig.wiki.innovateoregon.org'
+  let welcome = ["Welcome Visitors"]
+  let chapters = ["DIG Index"]
+  let appendix = []
+
+  let pageinfo = {}
+
+  function merge (array, element) {
+    let info = pageinfo[asSlug(element)]
+    if (info && !array.includes(info.title)) {
+      array.push(element)
+    }
+  }
+
+  function asSlug (title) {
+    return title
+      .replace(/\s/g, '-')
+      .replace(/[^A-Za-z0-9-]/g, '')
+      .toLowerCase()
+  }
+
+  function json (url) {
+    return fetch(url)
+      .then(res => res.json())
+  }
+
+  function link (title) {
+    let info = pageinfo[asSlug(title)]||({synopsis:'We could not find this page'})
+    let hover = info.synopsis.replace(/"/g,"'").replace(/<.*?>/g,'')
+    return `<a href="#${asSlug(title)}" title="${hover}">${title}</a>`
+  }
+
+  function title (page) {
+    let s = asSlug(page.title)
+    return `<h3><a name=${s}>${page.title}</a><a href="${site}/${s}.html" target=_blank> ⬀ </a></h3>`
+  }
+
+  function story (page) {
+    let slug = asSlug(page.title)
+
+    function item (obj) {
+      let type = obj.type || 'paragraph'
+      let text = obj.text || ''
+      const trouble = () => console.log(type,'trouble',`${site}/${slug}.html`)
+      const href = (m) => {
+        var title = m.slice(2,-2)
+        merge(appendix, title)
+        return link(title)
+      }
+      const xref = (m) => {
+        let parts = m.split(' ')
+        let url = parts.shift().slice(1)
+        let word = parts.join(' ').slice(0,-1)
+        console.log({url,word,m})
+        return `<a href="${url}">${word}</a>`
+      }
+      switch(type) {
+        case 'html':
+          if (!/<img/) {
+            trouble()
+            text = text.replace(/<.*?>/g,'')
+          } else {
+            return text + '</i></center>'
+          }
+          break
+        case 'markdown':
+          text = text.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
+          text = text.replace(/\*(.+)\*/g,"<b>$1</b>")
+          text = text.replace(/_(.+)_/g,"<i>$1</i>")
+          if (text.match(/^[*+-]/) || ((text.match(/[*]/g)||[]).length%2)) {
+            trouble()
+          }
+          break
+        case 'graphviz':
+          if (!text.match(/^DOT FROM /)) {
+            trouble()
+          }
+          return `<img src="/png/${slug}.png">`
+          break
+      }
+      if (m = /^\[\[(.*?)\]\]$/.exec(text)) {
+        merge(chapters, m[1])
+      }
+      return `<p>${text.replace(/\[\[(.+?)\]\]/g,href).replace(/\[(https?:\/\/.+?) (.+?)\]/g,xref)}</p>`
+    }
+
+    return page.story.map(item).join("\n")
+  }
+
+  function draft (pages) {
+    output.innerHTML = 'formatting'
+    const trouble = (title) => ({title, story:[{text:'We could not find this page'}]})
+    var body = []
+    var emitted = {}
+
+    function emit (list) {
+      for (var i = 0; i < list.length; i++) {
+        let each = list[i]
+        let chapter = pages[asSlug(each)]||trouble(each)
+        if (emitted[chapter.title]) continue
+        emitted[chapter.title] = true
+        body.push(title(chapter) + story(chapter))
+        if (each == chapters[0]) {
+          body.push('<p>Quick Links While Debugging</p>')
+          body.push('<p><a href="#appendix">Garden (appendix)</a></p>')
+          body.push('<p><a href="#index">Index (all pages so far)</a></p>')
+          body.push('<p><a href="#omitted">Omitted (where did these go?)</a></p>')
+        }
+      }
+    }
+
+    emit(welcome)
+    emit(chapters)
+
+    body.push('<a name=appendix><h2>Garden (appendix)</h2></a>')
+    emit(appendix)
+
+    body.push('<a name=index><h2>Index</h2></a>')
+    appendix.sort()
+    body.push(appendix.map(link).join("<br>\n"))
+
+    body.push('<a name=omitted><h2>Omitted</h2></a>')
+    let omitted = Object.values(pageinfo).map(each => each.title).filter(each => !appendix.includes(each))
+    emit(omitted)
+    output.innerHTML = body.join("\n")
+  }
+
+  function asmap (array) {
+    const bemap = (map, each) => {map[asSlug(each.title)] = each; return map}
+    return array.reduce(bemap, {})
+  }
+
+  async function load () {
+    let sitemap = await json(`${site}/system/sitemap.json`)
+    pageinfo = asmap(sitemap)
+    output.innerHTML = `loading ${sitemap.length} pages for DIG`
+    Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
+      .then(all => draft(asmap(all)))
+  }
+
+  load()
+
+</script>
+</body>
+<html>
