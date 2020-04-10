@@ -23,7 +23,7 @@ export function serve(req, _system) {
     wiki.serveFile(req,'image/png',path)
     return true
   }
-  if(req.url.startsWith('/static/')) {
+  if(req.url.startsWith('/assets/')) {
     let path = join('../seran-dig',req.url)
     console.log({path})
     // if (exists(path)) ...
@@ -64,6 +64,10 @@ DIG Handbook
     href: "/rebuild"
 
   [[Conversion Summary]] after build
+
+  We resort to an html script to complete the assembly of text and images for printing.
+
+  [http:/assets/dig.html dig.html]
 
 `)
 }
@@ -218,11 +222,15 @@ async function build () {
   }
 
   await rebuild.step('images completed, ready to upload')
-  let pubsite='path.ward.asia.wiki.org'
-  let assets='page/production-tools/images'
-  let proc2 = Deno.run({cmd:["rsync", "-avz", `${dataDir}/png/`, `asia:.wiki/${pubsite}/assets/${assets}/`]})
-  let status2 = await proc2.status()
-  if (!status2.success) console.log('rsync',status2)
+  try {
+    let pubsite='path.ward.asia.wiki.org'
+    let assets='page/production-tools/images'
+    let proc2 = Deno.run({cmd:["rsync", "-avz", `${dataDir}/png/`, `asia:.wiki/${pubsite}/assets/${assets}/`]})
+    let status2 = await proc2.status()
+    if (!status2.success) console.log('rsync',status2)
+  } catch (e) {
+    console.log('rsync catch', e)
+  }
 }
 
 
