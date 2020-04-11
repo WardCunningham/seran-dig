@@ -124,13 +124,14 @@ function page (title, story) {
   const asSlug = title => title.replace(/\s/g, "-").replace(/[^A-Za-z0-9-]/g, "").toLowerCase()
   const asItems = metatext => metatext.split(/\n+/).map((text) => wiki.paragraph(text))
   route(`/${asSlug(title)}.json`, async (req, _system) => {
-    wiki.serveJson(req, wiki.page(title, asItems(story())))
+    wiki.serveJson(req, wiki.page(title, asItems(await story())))
   })
 }
 
-page('Handbook Source', () =>
+page('Handbook Source', async () => {
+  let sitemap = await json(`${site}/system/sitemap.json`)
 
-`Before we start we check to see if our source has been updated since our last build.
+return `Before we start we check to see if our source has been updated since our last build.
 
 Sitemap information.
 
@@ -143,7 +144,7 @@ ${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
 
 Last Build Started
 ${lastrun}
-`)
+`})
 
 page('Conversion Summary', () =>
 `We create PNG files for pages with diagrams.
