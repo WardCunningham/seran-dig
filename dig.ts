@@ -163,7 +163,7 @@ let text =
 
   rankdir=TB
 
-  node [style=filled fillcolor=white penwidth=5 color=black fontname="Helvetica-bold"]
+  node [style=filled fillcolor=white penwidth=5 color=black]
   HERE NODE
 
     node [style=filled fillcolor=white]
@@ -174,9 +174,9 @@ let text =
             WHERE /^Next/
               LINKS HERE -> NODE
 
-    node [style=filled fillcolor=white penwidth=3 color=black fontname="Helvetica"]
+    node [style=filled fillcolor=white penwidth=3 color=black]
     LINKS HERE -> NODE
-       node [style=filled fillcolor=white penwidth=1 color=black fontname="Helvetica"]
+       node [style=filled fillcolor=white penwidth=1 color=black]
        HERE NODE
          LINKS HERE -> NODE`
 
