@@ -16,7 +16,6 @@
   let site = 'https://dig.wiki.innovateoregon.org'
   let welcome = ["Welcome Visitors"]
   let chapters = ["DIG Index"]
-  let appendix = []
 
   let pageinfo = {}
 
@@ -56,19 +55,21 @@
     function item (obj) {
       let type = obj.type || 'paragraph'
       let text = obj.text || ''
+
       const trouble = () => console.log(type,'trouble',`${site}/${slug}.html`)
+
       const href = (m) => {
         var title = m.slice(2,-2)
-        merge(appendix, title)
         return link(title)
       }
       const xref = (m) => {
         let parts = m.split(' ')
         let url = parts.shift().slice(1)
         let word = parts.join(' ').slice(0,-1)
-        console.log({url,word,m})
+        // console.log({url,word,m})
         return `<a href="${url}">${word}</a>`
       }
+
       switch(type) {
         case 'html':
           if (!/<img/) {
@@ -96,7 +97,12 @@
       if (m = /^\[\[(.*?)\]\]$/.exec(text)) {
         merge(chapters, m[1])
       }
-      return `<p>${text.replace(/\[\[(.+?)\]\]/g,href).replace(/\[(https?:\/\/.+?) (.+?)\]/g,xref)}</p>`
+      if(true) {
+        return `<p>${text.replace(/\[\[(.+?)\]\]/g,href).replace(/\[(https?:\/\/.+?) (.+?)\]/g,xref)}</p>`
+      } else {
+        text.replace(/\[\[(.+?)\]\]/g,href)
+        return type
+      }
     }
 
     return page.story.map(item).join("\n")
@@ -115,28 +121,54 @@
         if (emitted[chapter.title]) continue
         emitted[chapter.title] = true
         body.push(title(chapter) + story(chapter))
-        if (each == chapters[0]) {
-          body.push('<p>Quick Links While Debugging</p>')
-          body.push('<p><a href="#appendix">Garden (appendix)</a></p>')
-          body.push('<p><a href="#index">Index (all pages so far)</a></p>')
-          body.push('<p><a href="#omitted">Omitted (where did these go?)</a></p>')
+        // if (each == chapters[0]) {
+        //   body.push('<p>Quick Links While Debugging</p>')
+        //   body.push('<p><a href="#garden">Garden</a></p>')
+        //   body.push('<p><a href="#omitted">Omitted (where did these go?)</a></p>')
+        // }
+      }
+    }
+
+    function traverse (todo) {
+      let more = [...todo]
+      let done = []
+      function visit(title) {
+        if (!done.includes(title)) {
+          done.push(title)
+          let slug = asSlug(title)
+          let page = pages[slug]
+          if (page) {
+            for (let item of page.story||[]) {
+              if (['paragraph','markdown'].includes(item.type)) {
+                for (let link of (item.text||'').matchAll(/\[\[(.*?)\]\]/g)) {
+                  if (link[1] && !done.includes(link[1])) {
+                    more.push(link[1])
+                  }
+                }
+              }
+            }
+          }
         }
       }
+      while(more.length) {
+        visit(more.shift())
+      }
+      done.sort()
+      return done
     }
 
     emit(welcome)
     emit(chapters)
 
-    body.push('<a name=appendix><h2>Garden (appendix)</h2></a>')
-    emit(appendix)
+    let seeds = welcome.concat(chapters)
+    let garden = traverse(seeds).filter(title => !seeds.includes(title))
+    body.push('<a name=garden><h2>Garden</h2></a>')
+    body.push(garden.map(link).join("<br>\n"))
+    emit(garden)
 
-    body.push('<a name=index><h2>Index</h2></a>')
-    appendix.sort()
-    body.push(appendix.map(link).join("<br>\n"))
+    // body.push('<a name=omitted><h2>Omitted</h2></a>')
+    // emit(Object.values(pageinfo).map(each => each.title))
 
-    body.push('<a name=omitted><h2>Omitted</h2></a>')
-    let omitted = Object.values(pageinfo).map(each => each.title).filter(each => !appendix.includes(each))
-    emit(omitted)
     output.innerHTML = body.join("\n")
   }
 
