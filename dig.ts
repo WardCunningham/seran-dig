@@ -63,6 +63,9 @@ DIG Handbook
     text: "Fetch and process all pages.",
     href: "/rebuild"
 
+  Plugin needs help? Try this new client:
+  [http://dig.seran.c2.com/index.html?page=welcome-visitors&page=dig-handbook site]
+
   [[Conversion Summary]] after build
 
   We resort to an html script to complete the assembly of text and images for printing.
