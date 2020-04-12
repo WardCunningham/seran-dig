@@ -69,6 +69,7 @@ DIG Handbook
   [[Conversion Summary]] after build
 
   We resort to an html script to complete the assembly of text and images for printing.
+  See its console log for source of missing page references.
   [http:/assets/dig.html dig.html]
 
 `)
@@ -134,8 +135,8 @@ function page (title, story) {
 
 page('Handbook Source', async () => {
   let sitemap = await json(`${site}/system/sitemap.json`)
-
-return `Before we start we check to see if our source has been updated since our last build.
+  return `
+Before we start we check to see if our source has been updated since our last build.
 
 Sitemap information.
 
@@ -151,13 +152,15 @@ ${lastrun}
 `})
 
 page('Conversion Summary', () =>
-`We create PNG files for pages with diagrams.
+`Having fetched every page we then check that each is accessible by links from Welcome Visitors and that all links can be resolved by these pages.
 
 Pages missing from source site
 ${missing.map(t=>`[[${t}]]`).join(', ')}
 
 Pages unreachable from welcome page
 ${unreachable.map(t=>`[[${t}]]`).join(', ')}
+
+We also run one of two versions of preview-next-diagram choosing left-right or top-bottom and save the resulting images as png.
 
 Pages with diagrams
 ${wrote.map(t=>`[[${t}]]`).join(', ')}
