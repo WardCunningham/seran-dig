@@ -78,7 +78,7 @@ function route(url, fn) {
   metaPages[url] = fn;
 }
 
-function slug (title) {
+function asSlug (title) {
   return title
     .replace(/\s/g, '-')
     .replace(/[^A-Za-z0-9-]/g, '')
@@ -86,7 +86,7 @@ function slug (title) {
 }
 
 function asmap (array) {
-  const bemap = (map, each) => {map[slug(each.title)] = each; return map}
+  const bemap = (map, each) => {map[asSlug(each.title)] = each; return map}
   return array.reduce(bemap, {})
 }
 
@@ -103,6 +103,8 @@ let pages = {}
 
 let wrote = []
 let skipped = []
+let missing = []
+let unreachable = []
 let lastrun = new Date()
 
 
@@ -124,7 +126,6 @@ await mkdir (`${dataDir}/png`)
 
 function page (title, story) {
   const route = (url, fn) => {metaPages[url] = fn}
-  const asSlug = title => title.replace(/\s/g, "-").replace(/[^A-Za-z0-9-]/g, "").toLowerCase()
   const asItems = metatext => metatext.split(/\n+/).map((text) => wiki.paragraph(text))
   route(`/${asSlug(title)}.json`, async (req, _system) => {
     wiki.serveJson(req, wiki.page(title, asItems(await story())))
@@ -151,6 +152,12 @@ ${lastrun}
 
 page('Conversion Summary', () =>
 `We create PNG files for pages with diagrams.
+
+Pages missing from source site
+${missing.map(t=>`[[${t}]]`).join(', ')}
+
+Pages unreachable from welcome page
+${unreachable.map(t=>`[[${t}]]`).join(', ')}
 
 Pages with diagrams
 ${wrote.map(t=>`[[${t}]]`).join(', ')}
@@ -198,20 +205,21 @@ async function build () {
 
   wrote = []
   skipped = []
+  missing = []
+  unreachable = []
   lastrun = new Date()
-
   sitemap = await json(`${site}/system/sitemap.json`)
-  await rebuild.step(`${sitemap.length} pages in sitemap`)
+
+  await rebuild.step(`fetch ${sitemap.length} pages`)
   pageinfo = asmap(sitemap)
   pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
         .then(all => {return asmap(all)})
-  await rebuild.step(`pages loaded, ready to draw`)
 
+  await rebuild.step(`render diagrams as png`)
   for (let slug in pages) {
     let page = pages[slug]
     let graphviz = page.story.find(i => i.type == 'graphviz')
     if (graphviz) {
-      await rebuild.step(`${page.title} next graphviz`)
       let markup = graphviz.text.match(/tall/) ? text.replace('TB','LR') : text
       let dot = await makedot(page, {type:'graphviz', text:markup})
       writeFileStrSync(`${dataDir}/dot/${slug}.dot`, dot)
@@ -224,7 +232,7 @@ async function build () {
     }
   }
 
-  await rebuild.step('images completed, ready to upload')
+  await rebuild.step('upload png files')
   try {
     let pubsite='path.ward.asia.wiki.org'
     let assets='page/production-tools/images'
@@ -234,12 +242,41 @@ async function build () {
   } catch (e) {
     console.log('rsync catch', e)
   }
+
+  await rebuild.step('find missing or unreachable titles')
+    let more = ["Welcome Visitors"]
+    let done = []
+    function visit(title) {
+      if (!done.includes(title)) {
+        done.push(title)
+        let slug = asSlug(title)
+        let page = pages[slug]
+        if (page) {
+          for (let item of page.story||[]) {
+            if (['paragraph','markdown'].includes(item.type)) {
+              for (let link of (item.text||'').matchAll(/\[\[(.*?)\]\]/g)) {
+                if (link[1] && !done.includes(link[1])) {
+                  more.push(link[1])
+                }
+              }
+            }
+          }
+        } else {
+          if (!missing.includes(title)) missing.push(title)
+        }
+      }
+    }
+    while(more.length) {
+      visit(more.shift())
+    }
+    for (let info of sitemap) {
+      if (!done.includes(info.title)) unreachable.push(info.title)
+    }
 }
 
 
 async function makedot(page, item) {
   var m
-  const asSlug = (name) => name.replace(/\s/g, '-').replace(/[^A-Za-z0-9-]/g, '').toLowerCase()
   var text = item.text
   // if (m = text.match(/^DOT FROM ([a-z0-9-]+)($|\n)/)) {
   //   let site = $item.parents('.page').data('site')||location.host
