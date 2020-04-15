@@ -213,6 +213,9 @@ async function build () {
   lastrun = new Date()
   sitemap = await json(`${site}/system/sitemap.json`)
 
+  try {
+
+
   await rebuild.step(`fetch ${sitemap.length} pages`)
   pageinfo = asmap(sitemap)
   pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
@@ -275,6 +278,11 @@ async function build () {
     for (let info of sitemap) {
       if (!done.includes(info.title)) unreachable.push(info.title)
     }
+
+  } catch(e) {
+    console.log('exception in build', e)
+  }
+
 }
 
 
