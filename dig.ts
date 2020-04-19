@@ -15,20 +15,20 @@ import {
 export let plugins = [ "/client/process-step.mjs" ]
 export let metaPages = {};
 
-export async function serve(req, _system) {
+export function serve(req, _system) {
   if(req.url.startsWith('/png/')) {
     let path = join('../seran-dig/data',req.url)
-    if (await exists(path)) {
-      wiki.serveFile(req,'image/png',path)
-      return true
-    }
+    console.log({path})
+    // if (exists(path)) ...
+    wiki.serveFile(req,'image/png',path)
+    return true
   }
   if(req.url.startsWith('/assets/')) {
     let path = join('../seran-dig',req.url)
-    if (await exists(path)) {
-      wiki.serveFile(req,'text/html',path)
-      return true
-    }
+    console.log({path})
+    // if (exists(path)) ...
+    wiki.serveFile(req,'text/html',path)
+    return true
   }
   return false
 }
