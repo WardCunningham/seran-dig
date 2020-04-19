@@ -2,7 +2,7 @@
 // usage: sh seran-wiki.sh --allow-disclosure ../seran-dig/dig.ts
 
 const { stat } = Deno;
-import { readFileStr, writeFileStrSync, exists } from "std/fs/mod.ts";
+import { readFileStr, writeFileStrSync, exists, existsSync } from "std/fs/mod.ts";
 import * as wiki from "seran/wiki.ts";
 import { ProcessStep } from "./step.ts";
 import {
@@ -15,17 +15,17 @@ import {
 export let plugins = [ "/client/process-step.mjs" ]
 export let metaPages = {};
 
-export async function serve(req, _system) {
+export function serve(req, _system) {
   if(req.url.startsWith('/png/')) {
     let path = join('../seran-dig/data',req.url)
-    if (await exists(path)) {
+    if (existsSync(path)) {
       wiki.serveFile(req,'image/png',path)
       return true
     }
   }
   if(req.url.startsWith('/assets/')) {
     let path = join('../seran-dig',req.url)
-    if (await exists(path)) {
+    if (existsSync(path)) {
       wiki.serveFile(req,'text/html',path)
       return true
     }
