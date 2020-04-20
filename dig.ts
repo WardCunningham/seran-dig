@@ -308,6 +308,10 @@ async function build () {
                   hate(`Links to missing '${link[1]}' omitted`)
                 }
               }
+            } else if(['graphviz','html'].includes(item.type)) {
+              if (!(item.text.startsWith('DOT FROM')||item.text.startsWith('<img'))) {
+                hate(`Pages with unexpected '${item.type}' items`)
+              }
             } else {
               hate(`Pages with '${item.type}' items omitted`)
             }
