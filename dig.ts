@@ -55,9 +55,21 @@ DIG Handbook
   First we check for changes in the source.
 
   roster:
-    text: "Related Sites\\n\\ndig.wiki.innovateoregon.org\\ndayton.fed.wiki\\ndig.seran.c2.com"
+    text: "Related Sites\\n\\ndig.wiki.innovateoregon.org\\ndayton.fed.wiki\\ndig.seran.c2.com\\ndev2.wiki.innovateoregon.org\\nthompson.wiki.innovateoregon.org\\npath.ward.asia.wiki.org\\nwellspring.fed.wiki\\ncode.fed.wiki"
 
   [[Handbook Source]] to be built
+
+  [[Run Batch Process]] when source changes
+
+  [[Diagrams Processed]] with lasting png files
+
+  [[Troubled Links]] that will be omitted
+
+  [[Troubled Pages]] to be corrected
+
+  [[Print to PDF]] when satisfied
+
+Run Batch Process
 
   Press Start to rerun diagrams before pringing a new version.
   Return in a few minutes to confirm completion.
@@ -69,9 +81,7 @@ DIG Handbook
   Plugin needs help? Try this new client:
   [http://dig.seran.c2.com/index.html?page=welcome-visitors&page=dig-handbook site]
 
-  [[Conversion Summary]] after build
 
-  [[Print to PDF]] when satisfied
 
 Print to PDF
 
@@ -113,7 +123,8 @@ let wrote = []
 let skipped = []
 let missing = []
 let unreachable = []
-let lastrun = new Date()
+let trouble = {}
+let lastrun = new Date(0)
 
 
 async function mkdir (path) {
@@ -128,6 +139,10 @@ await mkdir (`${dataDir}`)
 await mkdir (`${dataDir}/dot`)
 await mkdir (`${dataDir}/png`)
 
+if (await exists(`${dataDir}/lastrun`)) {
+  let stat = await Deno.stat(`${dataDir}/lastrun`);
+  lastrun = new Date(stat.modified * 1000)
+}
 
 
 // L I V E   R E P O R T S
@@ -139,6 +154,14 @@ function page (title, story) {
     wiki.serveJson(req, wiki.page(title, asItems(await story())))
   })
 }
+
+function troubled_pages (key) {
+return `
+${key}
+
+${trouble[key].map(title => `[[${title}]]`).join(', ')}
+
+`}
 
 page('Handbook Source', async () => {
   let sitemap = await json(`${site}/system/sitemap.json`)
@@ -154,11 +177,11 @@ ${sitemap.length} pages
 Last Site Update
 ${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
 
-Last Build Started
+Last Build Finished (now trustworthy if recent)
 ${lastrun}
 `})
 
-page('Conversion Summary', () =>
+page('Troubled Links', () =>
 `Having fetched every page we then check that each is accessible by links from Welcome Visitors and that all links can be resolved by these pages.
 
 Pages missing from source site
@@ -166,14 +189,23 @@ ${missing.map(t=>`[[${t}]]`).join(', ')}
 
 Pages unreachable from welcome page
 ${unreachable.map(t=>`[[${t}]]`).join(', ')}
+`)
 
-We also run one of two versions of preview-next-diagram choosing left-right or top-bottom and save the resulting images as png.
+page('Diagrams Processed', () =>
+`We run one of two versions of preview-next-diagram choosing left-right or top-bottom and save the resulting images as png.
 
 Pages with diagrams
 ${wrote.map(t=>`[[${t}]]`).join(', ')}
 
 Pages without diagrams
 ${skipped.map(t=>`[[${t}]]`).join(', ')}
+
+`)
+
+page('Troubled Pages', () =>
+`We examine the markup of every referenced page and report things that look like trouble here.
+
+${Object.keys(trouble).map(troubled_pages).join('')}
 
 `)
 
@@ -264,6 +296,7 @@ async function build () {
         done.push(title)
         let slug = asSlug(title)
         let page = pages[slug]
+        const hate = (m) => {trouble[m]=trouble[m]||[];trouble[m].push(title)}
         if (page) {
           for (let item of page.story||[]) {
             if (['paragraph','markdown'].includes(item.type)) {
@@ -271,7 +304,12 @@ async function build () {
                 if (link[1] && !done.includes(link[1])) {
                   more.push(link[1])
                 }
+                if (link[1] && !pageinfo[asSlug(link[1])]) {
+                  hate(`Links to missing '${link[1]}' omitted`)
+                }
               }
+            } else {
+              hate(`Pages with '${item.type}' items omitted`)
             }
           }
         } else {
@@ -285,6 +323,9 @@ async function build () {
     for (let info of sitemap) {
       if (!done.includes(info.title)) unreachable.push(info.title)
     }
+
+    writeFileStrSync(`${dataDir}/lastrun`, '')
+    lastrun = new Date()
 
   } catch(e) {
     console.log('exception in build', e)
