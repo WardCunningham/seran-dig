@@ -81,8 +81,8 @@
           break
         case 'markdown':
           text = text.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
-          text = text.replace(/\*(.+)\*/g,"<b>$1</b>")
-          text = text.replace(/_(.+)_/g,"<i>$1</i>")
+          text = text.replace(/\*(.+?)\*/g,"<b>$1</b>")
+          text = text.replace(/_(.+?)_/g,"<i>$1</i>")
           if (text.match(/^[*+-]/) || ((text.match(/[*]/g)||[]).length%2)) {
             trouble()
           }
