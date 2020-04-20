@@ -87,7 +87,10 @@ Print to PDF
 
   We use an html script to complete the assembly of text and images for printing.
   See console log for source of missing page references.
-  [http:/assets/dig.html dig.html]
+
+  dig.seran.c2.com: [http://dig.seran.c2.com/assets/dig.html dig.html]
+
+  dig.localhost:8000: [http://dig.localhost:8000/assets/dig.html dig.html]
 
 `)
 }
