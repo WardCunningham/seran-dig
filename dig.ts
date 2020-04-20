@@ -54,7 +54,10 @@ DIG Handbook
   We bulk generate graphviz images for print publication as pdf.
   First we check for changes in the source.
 
-  [[Handbook Source]] recent build
+  roster:
+    text: "Related Sites\\n\\ndig.wiki.innovateoregon.org\\ndayton.fed.wiki\\ndig.seran.c2.com"
+
+  [[Handbook Source]] to be built
 
   Press Start to rerun diagrams before pringing a new version.
   Return in a few minutes to confirm completion.
@@ -68,8 +71,12 @@ DIG Handbook
 
   [[Conversion Summary]] after build
 
-  We resort to an html script to complete the assembly of text and images for printing.
-  See its console log for source of missing page references.
+  [[Print to PDF]] when satisfied
+
+Print to PDF
+
+  We use an html script to complete the assembly of text and images for printing.
+  See console log for source of missing page references.
   [http:/assets/dig.html dig.html]
 
 `)
