@@ -252,6 +252,7 @@ async function build () {
   skipped = []
   missing = []
   unreachable = []
+  trouble = {}
   lastrun = new Date()
   sitemap = await json(`${site}/system/sitemap.json`)
 
