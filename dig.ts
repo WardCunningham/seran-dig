@@ -51,8 +51,8 @@ Welcome Visitors
 
 DIG Handbook
 
-  We bulk generate graphviz images for print publication as pdf.
-  First we check for changes in the source.
+  We consistency check the source possible translation problems.
+  Then we bulk generate graphviz images for print publication as pdf.
 
   roster:
     text: "Related Sites\\n\\ndig.wiki.innovateoregon.org\\ndayton.fed.wiki\\ndig.seran.c2.com\\ndev2.wiki.innovateoregon.org\\nthompson.wiki.innovateoregon.org\\npath.ward.asia.wiki.org\\nwellspring.fed.wiki\\ncode.fed.wiki"
@@ -92,7 +92,7 @@ Print to PDF
 
   dig.localhost:8000: [http://dig.localhost:8000/assets/dig.html dig.html]
 
-`)
+`,metaPages)
 }
 
 function route(url, fn) {
