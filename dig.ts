@@ -247,7 +247,10 @@ async function build () {
         done.push(title)
         let slug = asSlug(title)
         let page = pages[slug]
-        const hate = (m) => {trouble[m]=trouble[m]||[];trouble[m].push(title)}
+        const hate = (m) => {
+          trouble[m]=trouble[m]||[];
+          if(!trouble[m].includes(title)) trouble[m].push(title)
+        }
         if (page) {
           for (let item of page.story||[]) {
             if (['paragraph','markdown'].includes(item.type)) {
