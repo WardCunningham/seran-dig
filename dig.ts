@@ -4,6 +4,7 @@
 const { stat } = Deno;
 import { readFileStr, writeFileStrSync, exists, existsSync } from "std/fs/mod.ts";
 import * as wiki from "seran/wiki.ts";
+import { asSlug } from "seran/wiki.ts";
 import { ProcessStep } from "./step.ts";
 import {
   isAbsolute,
@@ -15,96 +16,61 @@ import {
 export let plugins = [ "/client/process-step.mjs" ]
 export let metaPages = {};
 
-export function serve(req, _system) {
-  if(req.url.startsWith('/png/')) {
-    let path = join('../seran-dig/data',req.url)
-    if (existsSync(path)) {
-      wiki.serveFile(req,'image/png',path)
-      return true
-    }
-  }
-  if(req.url.startsWith('/assets/')) {
-    let path = join('../seran-dig',req.url)
-    if (existsSync(path)) {
-      wiki.serveFile(req,'text/html',path)
-      return true
-    }
+export let handler = new wiki.Handler()
+
+handler.route("^/png/", (req) => {
+  let path = join('../seran-dig/data',req.url)
+  if (existsSync(path)) {
+    wiki.serveFile(req,'image/png',path)
+    return true
   }
   return false
-}
+})
 
-export async function init(opts) {
-  wiki.pages(`
+handler.route("^/assets/", (req) => {
+  let path = join('../seran-dig',req.url)
+  if (existsSync(path)) {
+    wiki.serveFile(req,'text/html',path)
+    return true
+  }
+  return false
+})
 
-Welcome Visitors
+handler.items("Welcome Visitors", [
+  "Welcome to this [[Seran Wiki]] Federation outpost.\
+  From this page you can find who we are and what we do.",
+  "Pages about us.",
+  "[[Ward Cunningham]]",
+  "Pages where we do and share.",
+  "[[DIG Handbook]]"
+])
 
-  Welcome to this [[Seran Wiki]] Federation outpost.
-  From this page you can find who we are and what we do.
+handler.items("DIG Handbook", [
+  "We consistency check the source possible translation problems.\
+  Then we bulk generate graphviz images for print publication as pdf.",
+  wiki.roster("Related Sites\n\ndig.wiki.innovateoregon.org\ndayton.fed.wiki\ndig.seran.c2.com\ndev2.wiki.innovateoregon.org\nthompson.wiki.innovateoregon.org\npath.ward.asia.wiki.org\nwellspring.fed.wiki\ncode.fed.wiki"),
+  "[[Handbook Source]] to be built",
+  "[[Run Batch Process]] when source changes",
+  "[[Diagrams Processed]] with lasting png files",
+  "[[Troubled Links]] that will be omitted",
+  "[[Troubled Pages]] to be corrected",
+  "[[Print to PDF]] when satisfied",
+])
 
-  Pages about us.
+handler.items("Run Batch Process", [
+  "Press Start to rerun diagrams before pringing a new version.\
+  Return in a few minutes to confirm completion.",
+  wiki.item("process-step", { text: "Fetch and process all pages.", href: "/rebuild" }),
+  "Plugin needs help? Try this new client:",
+  "[http://dig.seran.c2.com/index.html?page=welcome-visitors&page=dig-handbook site]",
+])
 
-  [[Ward Cunningham]]
-
-  Pages where we do and share.
-
-  [[DIG Handbook]]
-
-DIG Handbook
-
-  We consistency check the source possible translation problems.
-  Then we bulk generate graphviz images for print publication as pdf.
-
-  roster:
-    text: "Related Sites\\n\\ndig.wiki.innovateoregon.org\\ndayton.fed.wiki\\ndig.seran.c2.com\\ndev2.wiki.innovateoregon.org\\nthompson.wiki.innovateoregon.org\\npath.ward.asia.wiki.org\\nwellspring.fed.wiki\\ncode.fed.wiki"
-
-  [[Handbook Source]] to be built
-
-  [[Run Batch Process]] when source changes
-
-  [[Diagrams Processed]] with lasting png files
-
-  [[Troubled Links]] that will be omitted
-
-  [[Troubled Pages]] to be corrected
-
-  [[Print to PDF]] when satisfied
-
-Run Batch Process
-
-  Press Start to rerun diagrams before pringing a new version.
-  Return in a few minutes to confirm completion.
-
-  process-step:
-    text: "Fetch and process all pages.",
-    href: "/rebuild"
-
-  Plugin needs help? Try this new client:
-  [http://dig.seran.c2.com/index.html?page=welcome-visitors&page=dig-handbook site]
-
-
-
-Print to PDF
-
-  We use an html script to complete the assembly of text and images for printing.
-  See console log for source of missing page references.
-
-  dig.seran.c2.com: [http://dig.seran.c2.com/assets/dig.html dig.html]
-
-  dig.localhost:8000: [http://dig.localhost:8000/assets/dig.html dig.html]
-
-`,metaPages)
-}
-
-function route(url, fn) {
-  metaPages[url] = fn;
-}
-
-function asSlug (title) {
-  return title
-    .replace(/\s/g, '-')
-    .replace(/[^A-Za-z0-9-]/g, '')
-    .toLowerCase()
-}
+handler.items("Print to PDF", [
+  "We use an html script to complete the assembly of text and images for printing.\
+  See console log for source of missing page references.",
+  "dig.seran.c2.com: [http://dig.seran.c2.com/assets/dig.html dig.html]",
+  "dig.localhost:8000: [http://dig.localhost:8000/assets/dig.html dig.html]"
+])
 
 function asmap (array) {
   const bemap = (map, each) => {map[asSlug(each.title)] = each; return map}
@@ -158,59 +124,49 @@ function page (title, story) {
   })
 }
 
-function troubled_pages (key) {
-return `
-${key}
-
-${trouble[key].map(title => `[[${title}]]`).join(', ')}
-
-`}
-
-page('Handbook Source', async () => {
+handler.items('Handbook Source', async () => {
   let sitemap = await json(`${site}/system/sitemap.json`)
-  return `
-Before we start we check to see if our source has been updated since our last build.
+  return [
+    "Before we start we check to see if our source has been updated since our last build.",
+    "Sitemap information.",
+    `[${site} ${site}]`,
+    `${sitemap.length} pages`,
+    "Last Site Update:",
+    `${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}`,
+    "Last Build Finished (now trustworthy if recent)",
+    `${lastrun}`
+  ]})
 
-Sitemap information.
+handler.items('Troubled Links', () => [
+  "Having fetched every page we then check that each is accessible by links from Welcome Visitors and that all links can be resolved by these pages.",
+  "Pages missing from source site",
+  `${missing.map(t=>`[[${t}]]`).join(', ')}`,
+  "Pages unreachable from welcome page",
+  `${unreachable.map(t=>`[[${t}]]`).join(', ')}`
+])
 
-[${site} ${site}]
+handler.items('Diagrams Processed', () => [
+  "We run one of two versions of preview-next-diagram choosing left-right or top-bottom and save the resulting images as png.",
+  "Pages with diagrams",
+  `${wrote.map(t=>`[[${t}]]`).join(', ')}`,
+  "Pages without diagrams",
+  `${skipped.map(t=>`[[${t}]]`).join(', ')}`
+])
 
-${sitemap.length} pages
+function troubled_pages (key) {
+  return [
+    key,
+    trouble[key].map(title => `[[${title}]]`).join(', ')
+  ]
+}
 
-Last Site Update
-${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}
-
-Last Build Finished (now trustworthy if recent)
-${lastrun}
-`})
-
-page('Troubled Links', () =>
-`Having fetched every page we then check that each is accessible by links from Welcome Visitors and that all links can be resolved by these pages.
-
-Pages missing from source site
-${missing.map(t=>`[[${t}]]`).join(', ')}
-
-Pages unreachable from welcome page
-${unreachable.map(t=>`[[${t}]]`).join(', ')}
-`)
-
-page('Diagrams Processed', () =>
-`We run one of two versions of preview-next-diagram choosing left-right or top-bottom and save the resulting images as png.
-
-Pages with diagrams
-${wrote.map(t=>`[[${t}]]`).join(', ')}
-
-Pages without diagrams
-${skipped.map(t=>`[[${t}]]`).join(', ')}
-
-`)
-
-page('Troubled Pages', () =>
-`We examine the markup of every referenced page and report things that look like trouble here.
-
-${Object.keys(trouble).map(troubled_pages).join('')}
-
-`)
+handler.items('Troubled Pages', () => {
+  console.log(...Object.keys(trouble).flatMap(troubled_pages))
+  return [
+    "We examine the markup of every referenced page and report things that look like trouble here.",
+    ...Object.keys(trouble).flatMap(troubled_pages)
+  ]
+})
 
 // http://path.ward.asia.wiki.org/assets/page/production-tools/images/designed-ingenuity-dig.png
 
