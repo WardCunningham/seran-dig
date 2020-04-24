@@ -61,8 +61,8 @@ handler.items("Run Batch Process", [
   "Press Start to rerun diagrams before pringing a new version.\
   Return in a few minutes to confirm completion.",
   wiki.item("process-step", { text: "Fetch and process all pages.", href: "/rebuild" }),
-  "Plugin needs help? Try this new client:",
-  "[http://dig.seran.c2.com/index.html?page=welcome-visitors&page=dig-handbook site]",
+  "Plugin needs help? Try this new client: \
+  [http://dig.seran.c2.com/index.html?page=welcome-visitors&page=dig-handbook site]",
 ])
 
 handler.items("Print to PDF", [
@@ -116,14 +116,6 @@ if (await exists(`${dataDir}/lastrun`)) {
 
 // L I V E   R E P O R T S
 
-function page (title, story) {
-  const route = (url, fn) => {metaPages[url] = fn}
-  const asItems = metatext => metatext.split(/\n+/).map((text) => wiki.paragraph(text))
-  route(`/${asSlug(title)}.json`, async (req, _system) => {
-    wiki.serveJson(req, wiki.page(title, asItems(await story())))
-  })
-}
-
 handler.items('Handbook Source', async () => {
   let sitemap = await json(`${site}/system/sitemap.json`)
   return [
@@ -161,7 +153,6 @@ function troubled_pages (key) {
 }
 
 handler.items('Troubled Pages', () => {
-  console.log(...Object.keys(trouble).flatMap(troubled_pages))
   return [
     "We examine the markup of every referenced page and report things that look like trouble here.",
     ...Object.keys(trouble).flatMap(troubled_pages)

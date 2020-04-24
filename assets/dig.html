@@ -40,7 +40,8 @@
 
   function link (title) {
     let info = pageinfo[asSlug(title)]||({synopsis:'We could not find this page'})
-    let hover = info.synopsis.replace(/"/g,"'").replace(/<.*?>/g,'')
+    // let hover = info.synopsis.replace(/"/g,"'").replace(/<.*?>/g,'')
+    // return `<a href="#${asSlug(title)}" title="${hover}">${title}</a>`
     return `<a href="#${asSlug(title)}" title="${hover}">${title}</a>`
   }
 
