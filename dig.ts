@@ -120,29 +120,31 @@ handler.items('Handbook Source', async () => {
   let sitemap = await json(`${site}/system/sitemap.json`)
   return [
     "Before we start we check to see if our source has been updated since our last build.",
+    "This Report As Of",
+    `${new Date()}`,
     "Sitemap information.",
     `[${site} ${site}]`,
     `${sitemap.length} pages`,
     "Last Site Update:",
     `${new Date(sitemap.reduce((m,i) => Math.max(m,i.date),0))}`,
-    "Last Build Finished (now trustworthy if recent)",
+    "Last Build Finished",
     `${lastrun}`
   ]})
 
 handler.items('Troubled Links', () => [
   "Having fetched every page we then check that each is accessible by links from Welcome Visitors and that all links can be resolved by these pages.",
   "Pages missing from source site",
-  `${missing.map(t=>`[[${t}]]`).join(', ')}`,
+  missing.map(t=>`[[${t}]]`).join(', '),
   "Pages unreachable from welcome page",
-  `${unreachable.map(t=>`[[${t}]]`).join(', ')}`
+  unreachable.map(t=>`[[${t}]]`).join(', ')
 ])
 
 handler.items('Diagrams Processed', () => [
   "We run one of two versions of preview-next-diagram choosing left-right or top-bottom and save the resulting images as png.",
   "Pages with diagrams",
-  `${wrote.map(t=>`[[${t}]]`).join(', ')}`,
+  wrote.map(t=>`[[${t}]]`).join(', '),
   "Pages without diagrams",
-  `${skipped.map(t=>`[[${t}]]`).join(', ')}`
+  skipped.map(t=>`[[${t}]]`).join(', ')
 ])
 
 function troubled_pages (key) {
