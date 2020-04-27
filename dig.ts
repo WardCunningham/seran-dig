@@ -72,6 +72,17 @@ handler.items("Print to PDF", [
   "dig.localhost:8000: [http://dig.localhost:8000/assets/dig.html dig.html]"
 ])
 
+handler.items("Print to PDF", [
+  "We use an html script to complete the assembly of text and images for printing.\
+  See console log for source of missing page references.",
+  "dig.seran.c2.com: [http://dig.seran.c2.com/assets/dig.html dig.html]",
+  "dig.localhost:8000: [http://dig.localhost:8000/assets/dig.html dig.html]",
+  "Here we have rewritten the pdf print to be much slimmer and easy to debug.",
+  "dig.seran.c2.com: [http://dig.seran.c2.com/assets/slim-dig.html slim-dig.html]",
+  "dig.localhost:8000: [http://dig.localhost:8000/assets/slim-dig.html slim-dig.html]",
+  "See also [[Links in JSON]], [[Pages in JSON]]"
+])
+
 function asmap (array) {
   const bemap = (map, each) => {map[asSlug(each.title)] = each; return map}
   return array.reduce(bemap, {})
@@ -87,6 +98,7 @@ let site = 'https://dig.wiki.innovateoregon.org'
 let sitemap = []
 let pageinfo = {}
 let pages = {}
+let links = {}
 
 let wrote = []
 let skipped = []
@@ -161,6 +173,36 @@ handler.items('Troubled Pages', () => {
   ]
 })
 
+let linkmodel =
+`[] MAX 1000
+  {} NODE Slug
+    [] MAX 20
+      link
+ `
+
+handler.items('Links in JSON', () => [
+  "We export this data using the Json and Metamodel plugins.",
+  wiki.item('json', {text:'audited map of slugs to array of linked slugs', resource:links}),
+  wiki.item('metamodel', {text: linkmodel})
+])
+
+handler.items('Pages in JSON', () => {
+  let resource = []
+  if (Object.keys(links).length) {
+    let language = ['welcome-visitors','dig-index',...links['dig-index']]
+    let garden = Object.keys(links).filter(link => !language.includes(link)).sort()
+    let text = garden.map(slug=>`[[${pages[slug].title}]]`).join("<br>\n")
+    pages['garden'] = {title:'Garden',story:[{type:'html',text}]}
+    let book = [language,'garden',garden].flat()
+    resource = book.map(slug => pages[slug])
+  }
+  return [
+    "We export partial pages in print order.",
+    wiki.item('json', {text:'ordered array of page titles and stories.', resource}),
+    wiki.item('metamodel', {text: linkmodel})
+  ]}
+)
+
 // http://path.ward.asia.wiki.org/assets/page/production-tools/images/designed-ingenuity-dig.png
 
 let text =
@@ -197,6 +239,7 @@ let rebuild = new ProcessStep('rebuild', false, build).control(metaPages)
 
 async function build () {
 
+  links = {}
   wrote = []
   skipped = []
   missing = []
@@ -211,7 +254,7 @@ async function build () {
   await rebuild.step(`fetch ${sitemap.length} pages`)
   pageinfo = asmap(sitemap)
   pages = await Promise.all(sitemap.map(each => json(`${site}/${each.slug}.json`)))
-        .then(all => {return asmap(all)})
+        .then(all => {return asmap(all.map(p => ({title:p.title, story:p.story})))})
 
   await rebuild.step(`render diagrams as png`)
   for (let slug in pages) {
@@ -254,13 +297,16 @@ async function build () {
           if(!trouble[m].includes(title)) trouble[m].push(title)
         }
         if (page) {
+          links[slug] = []
           for (let item of page.story||[]) {
             if (['paragraph','markdown'].includes(item.type)) {
-              for (let link of (item.text||'').matchAll(/\[\[(.*?)\]\]/g)) {
-                if (link[1] && !done.includes(link[1])) {
+              for (let link of (item.text||'').matchAll(/\[\[(.+?)\]\]/g)) {
+                if (!done.includes(link[1])) {
                   more.push(link[1])
                 }
-                if (link[1] && !pageinfo[asSlug(link[1])]) {
+                if (pageinfo[asSlug(link[1])]) {
+                  links[slug].push(asSlug(link[1]))
+                } else {
                   hate(`Links to missing '${link[1]}' omitted`)
                 }
               }

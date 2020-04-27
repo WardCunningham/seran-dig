@@ -1,0 +1,103 @@
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body>
+<div id="output" style="max-width:600px;">loading</div>
+
+<style>
+  a {text-decoration: none;}
+  h2, h3 {page-break-before: always;}
+  img {max-width: 460px;}
+</style>
+
+<script>
+
+  let site = 'https://dig.wiki.innovateoregon.org'
+
+  function asSlug (title) {
+    return title
+      .replace(/\s/g, '-')
+      .replace(/[^A-Za-z0-9-]/g, '')
+      .toLowerCase()
+  }
+
+  function json (url) {
+    return fetch(url)
+      .then(res => res.json())
+  }
+
+  function link (title) {
+    // let hover = info.synopsis.replace(/"/g,"'").replace(/<.*?>/g,'')
+    // return `<a href="#${asSlug(title)}" title="${hover}">${title}</a>`
+    return `<a href="#${asSlug(title)}">${title}</a>`
+  }
+
+  function title (page) {
+    let s = asSlug(page.title)
+    return `<h3><a name=${s}>${page.title}</a><a href="${site}/${s}.html" target=_blank> ⬀ </a></h3>`
+  }
+
+  function story (page) {
+    let slug = asSlug(page.title)
+    return page.story.map(i => item(i)).join("\n")
+
+    function item (obj) {
+      let type = obj.type || 'paragraph'
+      let text = obj.text || ''
+
+      const trouble = () => console.log(type,'trouble',`${site}/${slug}.html`)
+
+      const href = (m) => {
+        var title = m.slice(2,-2)
+        return link(title)
+      }
+      const xref = (m) => {
+        let parts = m.split(' ')
+        let url = parts.shift().slice(1)
+        let word = parts.join(' ').slice(0,-1)
+        // console.log({url,word,m})
+        return `<a href="${url}">${word}</a>`
+      }
+
+      switch(type) {
+        case 'html':
+          if (!/<img/) {
+            trouble()
+            text = text.replace(/<.*?>/g,'')
+          } else {
+            text = text + '</i></center>'
+          }
+          break
+        case 'markdown':
+          text = text.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
+          text = text.replace(/\*(.+?)\*/g,"<b>$1</b>")
+          text = text.replace(/_(.+?)_/g,"<i>$1</i>")
+          if (text.match(/^[*+-]/) || ((text.match(/[*]/g)||[]).length%2)) {
+            trouble()
+          }
+          break
+        case 'graphviz':
+          if (!text.match(/^DOT FROM /)) {
+            trouble()
+          }
+          return `<img src="/png/${slug}.png">`
+          break
+      }
+      return `<p>${text.replace(/\[\[(.+?)\]\]/g,href).replace(/\[(https?:\/\/.+?) (.+?)\]/g,xref)}</p>`
+    }
+  }
+
+  async function load () {
+    let composite = await json('/pages-in-json.json')
+    let pages = composite.story[1].resource
+    console.log(pages.length, 'pages loaded')
+    let body = pages.map(page => title(page)+story(page))
+    output.innerHTML = body.join("\n")
+  }
+
+  load()
+
+</script>
+</body>
+<html>
