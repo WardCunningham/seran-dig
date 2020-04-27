@@ -292,30 +292,39 @@ async function build () {
         done.push(title)
         let slug = asSlug(title)
         let page = pages[slug]
-        const hate = (m) => {
+        const tally = (m) => {
           trouble[m]=trouble[m]||[];
           if(!trouble[m].includes(title)) trouble[m].push(title)
+        }
+        const resolve = (item) => {
+          for (let link of (item.text||'').matchAll(/\[\[(.+?)\]\]/g)) {
+            if (!done.includes(link[1])) {
+              more.push(link[1])
+            }
+            if (pageinfo[asSlug(link[1])]) {
+              links[slug].push(asSlug(link[1]))
+            } else {
+              tally(`Links to missing '${link[1]}' omitted`)
+            }
+          }
         }
         if (page) {
           links[slug] = []
           for (let item of page.story||[]) {
             if (['paragraph','markdown'].includes(item.type)) {
-              for (let link of (item.text||'').matchAll(/\[\[(.+?)\]\]/g)) {
-                if (!done.includes(link[1])) {
-                  more.push(link[1])
-                }
-                if (pageinfo[asSlug(link[1])]) {
-                  links[slug].push(asSlug(link[1]))
-                } else {
-                  hate(`Links to missing '${link[1]}' omitted`)
-                }
+              resolve(item)
+            } else if (['html'].includes(item.type)) {
+              for (let tag of item.text.matchAll(/<([A-Za-z]+)\b/g)) {
+                tally(`Pages with '${tag[1]}' tag in 'html' item`)
               }
-            } else if(['graphviz','html'].includes(item.type)) {
-              if (!(item.text.startsWith('DOT FROM')||item.text.startsWith('<img'))) {
-                hate(`Pages with unexpected '${item.type}' items`)
+              resolve(item)
+
+            } else if(['graphviz'].includes(item.type)) {
+              if (!(item.text.startsWith('DOT FROM'))) {
+                tally(`Pages with unexpected '${item.type}' items`)
               }
             } else {
-              hate(`Pages with '${item.type}' items omitted`)
+              tally(`Pages where '${item.type}' items omitted`)
             }
           }
         } else {
