@@ -14,6 +14,7 @@
 <script>
 
   let site = 'https://dig.wiki.innovateoregon.org'
+  let slugs = []
 
   function asSlug (title) {
     return title
@@ -30,6 +31,7 @@
   function link (title) {
     // let hover = info.synopsis.replace(/"/g,"'").replace(/<.*?>/g,'')
     // return `<a href="#${asSlug(title)}" title="${hover}">${title}</a>`
+    if (!slugs.includes(asSlug(title))) return title
     return `<a href="#${asSlug(title)}">${title}</a>`
   }
 
@@ -91,6 +93,7 @@
   async function load () {
     let composite = await json('/pages-in-json.json')
     let pages = composite.story[1].resource
+    slugs = pages.map(page => asSlug(page.title))
     console.log(pages.length, 'pages loaded')
     let body = pages.map(page => title(page)+story(page))
     output.innerHTML = body.join("\n")
