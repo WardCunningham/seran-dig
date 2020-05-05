@@ -7,7 +7,7 @@
 
 <style>
   a {text-decoration: none;}
-  h2, h3 {page-break-before: always;}
+  h2, h3, .insert {page-break-before: always;}
   img {max-width: 460px;}
 </style>
 
@@ -90,12 +90,16 @@
     }
   }
 
+  function insert (page) {
+    return `<img class="insert" width=100% src=${page.png}>`
+  }
+
   async function load () {
     let composite = await json('/pages-in-json.json')
     let pages = composite.story[1].resource
     slugs = pages.map(page => asSlug(page.title))
     console.log(pages.length, 'pages loaded')
-    let body = pages.map(page => title(page)+story(page))
+    let body = pages.map(page => page.insert ? insert(page) : title(page)+story(page))
     output.innerHTML = body.join("\n")
   }
 
