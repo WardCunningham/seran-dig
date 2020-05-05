@@ -194,7 +194,7 @@ handler.items('Pages in JSON', () => {
   pages['cover-png'] = {title:'Cover.png', insert:true, png:'http://path.ward.asia.wiki.org/assets/page/production-tools/Cover.png'}
   if (Object.keys(links).length) {
     let language = ['cover-png','welcome-visitors','dig-index',...links['dig-index']]
-    let garden = Object.keys(links).filter(link => !language.includes(link)).sort()
+    let garden = Object.keys(links).filter(link => !(language.includes(link)||extras.includes(link))).sort()
     let text = garden.map(slug=>`[[${pages[slug].title}]]`).join("<br>\n")
     pages['garden'] = {title:'Garden',story:[{type:'html',text}]}
     let book = [language,'garden',garden].flat().filter(slug => !extras.includes(slug))
