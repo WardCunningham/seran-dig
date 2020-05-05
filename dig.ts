@@ -151,7 +151,7 @@ handler.items('Troubled Links', () => [
   "Pages unreachable from welcome page",
   unreachable.map(t=>`[[${t}]]`).join(', '),
   "Pages to be omitted as extras",
-  extras.map(t=>`[[${t}]]`).join(', ')
+  extras.map(t=>`[[${pages[t].title}]]`).join(', ')
 ])
 
 handler.items('Diagrams Processed', () => [
@@ -191,7 +191,6 @@ handler.items('Links in JSON', () => [
 
 handler.items('Pages in JSON', () => {
   let resource = []
-  let extras = links['dig-extras'] || []
   pages['cover-png'] = {title:'Cover.png', insert:true, png:'http://path.ward.asia.wiki.org/assets/page/production-tools/Cover.png'}
   if (Object.keys(links).length) {
     let language = ['cover-png','welcome-visitors','dig-index',...links['dig-index']]
@@ -344,6 +343,8 @@ async function build () {
     for (let info of sitemap) {
       if (!done.includes(info.title)) unreachable.push(info.title)
     }
+
+    extras = links['dig-extras'] || []
 
     writeFileStrSync(`${dataDir}/lastrun`, '')
     lastrun = new Date()
