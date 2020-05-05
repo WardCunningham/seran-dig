@@ -104,6 +104,7 @@ let wrote = []
 let skipped = []
 let missing = []
 let unreachable = []
+let extras = []
 let trouble = {}
 let lastrun = new Date(0)
 
@@ -148,7 +149,9 @@ handler.items('Troubled Links', () => [
   "Pages missing from source site",
   missing.map(t=>`[[${t}]]`).join(', '),
   "Pages unreachable from welcome page",
-  unreachable.map(t=>`[[${t}]]`).join(', ')
+  unreachable.map(t=>`[[${t}]]`).join(', '),
+  "Pages to be omitted as extras",
+  extras.map(t=>`[[${t}]]`).join(', ')
 ])
 
 handler.items('Diagrams Processed', () => [
@@ -188,13 +191,14 @@ handler.items('Links in JSON', () => [
 
 handler.items('Pages in JSON', () => {
   let resource = []
+  let extras = links['dig-extras'] || []
   pages['cover-png'] = {title:'Cover.png', insert:true, png:'http://path.ward.asia.wiki.org/assets/page/production-tools/Cover.png'}
   if (Object.keys(links).length) {
     let language = ['cover-png','welcome-visitors','dig-index',...links['dig-index']]
     let garden = Object.keys(links).filter(link => !language.includes(link)).sort()
     let text = garden.map(slug=>`[[${pages[slug].title}]]`).join("<br>\n")
     pages['garden'] = {title:'Garden',story:[{type:'html',text}]}
-    let book = [language,'garden',garden].flat()
+    let book = [language,'garden',garden].flat().filter(slug => !extras.includes(slug))
     resource = book.map(slug => pages[slug])
   }
   return [
@@ -245,6 +249,7 @@ async function build () {
   skipped = []
   missing = []
   unreachable = []
+  extras = []
   trouble = {}
   lastrun = new Date()
   sitemap = await json(`${site}/system/sitemap.json`)
