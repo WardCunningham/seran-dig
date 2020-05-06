@@ -165,7 +165,7 @@ handler.items('Diagrams Processed', () => [
 function troubled_pages (key) {
   return [
     key,
-    trouble[key].map(title => `[[${title}]]`).join(', ')
+    trouble[key].filter(title => !extras.includes(asSlug(title))).map(title => `[[${title}]]`).join(', ')
   ]
 }
 
