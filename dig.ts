@@ -14,8 +14,6 @@ import {
 } from "std/path/posix.ts";
 
 export let plugins = [ "/client/process-step.mjs" ]
-export let metaPages = {};
-
 export let handler = new wiki.Handler()
 
 handler.route("^/png/", (req) => {
@@ -239,7 +237,7 @@ let text =
 //         ssh asia 'cat > .wiki/path.ward.asia.wiki.org/assets/page/production-tools/images/'$i'.png'
 // done)
 
-let rebuild = new ProcessStep('rebuild', false, build).control(metaPages)
+let rebuild = new ProcessStep('rebuild', false, build).register(handler)
 
 async function build () {
 
