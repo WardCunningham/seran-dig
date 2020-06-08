@@ -121,7 +121,7 @@ await mkdir (`${dataDir}/png`)
 
 if (await exists(`${dataDir}/lastrun`)) {
   let stat = await Deno.stat(`${dataDir}/lastrun`);
-  lastrun = new Date(stat.modified * 1000)
+  lastrun = new Date(stat.mtime.getTime() * 1000)
 }
 
 
