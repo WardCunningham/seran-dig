@@ -34,6 +34,11 @@ handler.route("^/assets/", (req) => {
   return false
 })
 
+handler.route("^/route-", (req) => {
+  wiki.serveJson(req, simnet(req.url))
+  return true
+})
+
 handler.items("Welcome Visitors", [
   "Welcome to this [[Seran Wiki]] Federation outpost.\
   From this page you can find who we are and what we do.",
@@ -659,6 +664,41 @@ async function makedot(page, item) {
 
 
 
+
+
+const stations = {};
+fetch('http://simnet.ward.asia.wiki.org/assets/pages/next-hop-routing/data.json')
+  .then(res => res.json())
+  .then(json => { for (let s of json) stations[s.zip] = s })
+
+const digit = (zip, col) =>
+  Math.floor(zip/(10**(2-col)))%10
+
+const hop = (from, toward) => {
+  for (let row of [0,1,2]) {
+    if(digit(from,row) != digit(toward,row)) {
+      let col = digit(toward,row)-1
+      return stations[from].route[row][col]
+    }
+  }
+  return null
+}
+
+function simnet(url) {
+  let [key, from, to, suffix] = url.split(/-|\./).map(z => z*1)
+  let title = `Route ${from}-${to}`
+  let text = `From ${stations[from].city} to ${stations[to].city}.`
+  let story = []
+  story.push({type:'paragraph', text})
+  let markup = []
+  while (from) {
+    let at = stations[from]
+    markup.push(`${at.lat},${at.lon} ${at.city}`)
+    from = hop(from, to)
+  }
+  story.push({type:'map', text:markup.join("\n")})
+  return {title, story}
+}
 
 
 
